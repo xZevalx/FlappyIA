@@ -69,11 +69,10 @@ class Flappy(pygame.sprite.Sprite):
 
     def update(self, time, keys):
         if self.rect.top >= 0 and self.rect.bottom <= HEIGHT:  # No se sale por arriba ni por abajo
-            self.rect.centery += self.speed * time  # Va cayendo
-        if keys[K_SPACE]:
-            # Salto
-            self.rect.centery -= .5 * self.accel * time ** 2 + self.speed * time
-            print(keys[K_SPACE])
+            self.rect.centery += .1 * self.accel * time ** 2 * self.speed * time  # Va cayendo
+            if keys[K_SPACE]:
+                # Salto
+                self.rect.centery -= .5 * self.accel * time ** 2 + self.speed * time
 
 
 # ---------------------------------------------------------------------
@@ -97,8 +96,6 @@ def main():
     pygame.display.set_caption("Flappy IA")
 
     background_image = load_image('assets/background.jpg')
-    ball = Ball()
-    bot_trampoline = Trampoline(HEIGHT - 50)
     flappy = Flappy()
 
     clock = pygame.time.Clock()
@@ -111,11 +108,7 @@ def main():
             if events.type == QUIT:
                 run = False
         flappy.update(time, keys)
-        # ball.update(time, bot_trampoline)
-        # bot_trampoline.update(time, keys)
         screen.blit(background_image, (0, 0))
-        # screen.blit(ball.image, ball.rect)
-        # screen.blit(bot_trampoline.image, bot_trampoline.rect)
         screen.blit(flappy.image, flappy.rect)
         pygame.display.flip()
     pygame.display.quit()
