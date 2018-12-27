@@ -6,8 +6,8 @@ import sys, pygame
 from pygame.locals import *
 
 # Constantes
-WIDTH = 500
-HEIGHT = 887
+WIDTH = 393
+HEIGHT = 700
 
 
 # Clases
@@ -92,7 +92,7 @@ def load_image(filename):
 # ---------------------------------------------------------------------
 
 def main():
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    screen = pygame.display.set_mode((WIDTH, HEIGHT), HWSURFACE | DOUBLEBUF | RESIZABLE)
     pygame.display.set_caption("Flappy IA")
 
     background_image = load_image('assets/background.jpg')
@@ -108,7 +108,7 @@ def main():
             if events.type == QUIT:
                 run = False
         flappy.update(time, keys)
-        screen.blit(background_image, (0, 0))
+        screen.blit(pygame.transform.scale(background_image, (WIDTH, HEIGHT)), (0, 0))
         screen.blit(flappy.image, flappy.rect)
         pygame.display.flip()
     pygame.display.quit()
