@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 import pygame
 import random
+import math
 from datetime import datetime
 from pygame.locals import *
 
@@ -15,6 +15,10 @@ def load_image(filename):
     except pygame.error as message:
         raise SystemExit(message)
     return image
+
+
+def distance(point1, point2):
+    return math.sqrt(math.pow(point2[0] - point1[0], 2) + math.pow(point2[1] - point1[1], 2))
 
 
 class FlappySprite(pygame.sprite.Sprite):
@@ -38,9 +42,6 @@ class FlappySprite(pygame.sprite.Sprite):
                 self.fall(time)
         elif self.rect.top <= 0:
             self.fall(time)
-        else:
-            print("Has perdido")
-            exit(1)
 
     def fall(self, time):
         self.rect.centery += .08 * self.accel * time ** 2 * self.speed * time
@@ -49,7 +50,7 @@ class FlappySprite(pygame.sprite.Sprite):
         self.rect.centery -= .2 * self.accel * time ** 2 + self.speed * time
 
     def reset(self):
-        self.rect.centerx = self.game.WIDTH / 2
+        self.rect.centerx = self.game.WIDTH / 3
         self.rect.centery = int(self.game.HEIGHT * (1 / 3))
 
 
@@ -82,10 +83,9 @@ class TubesPair:
         self.tube_up = TubeSprite(TubeSprite.UP)
         self.tube_down = TubeSprite(TubeSprite.DOWN)
 
-        self.center = random.uniform(int(self.game.HEIGHT * (1 / 4)), int(self.game.HEIGHT * (3 / 4)))
+        self.center = None
 
-        self.tube_up.rect.top = self.center + int(self.VERTICAL_GAP / 2)
-        self.tube_down.rect.bottom = self.center - int(self.VERTICAL_GAP / 2)
+        self.set_center()
 
         # Ambos parten a la derecha
         self.tube_up.rect.left = self.game.WIDTH
@@ -114,9 +114,15 @@ class TubesPair:
         self.tube_down.rect.left = xpos
 
     def set_center(self):
-        self.center = random.uniform(int(self.game.HEIGHT * (1 / 4)), int(self.game.HEIGHT * (3 / 4)))
+        self.center = random.uniform(int(self.game.HEIGHT * (2 / 5)), int(self.game.HEIGHT * (3 / 5)))
         self.tube_up.rect.top = self.center + int(self.VERTICAL_GAP / 2)
         self.tube_down.rect.bottom = self.center - int(self.VERTICAL_GAP / 2)
+
+
+class GameStates:
+    START = 0
+    PLAYING = 1
+    RESET = 2
 
 
 class FlappyGame:
@@ -124,8 +130,6 @@ class FlappyGame:
     HEIGHT = 540
     TUBES_DISTANCE = 350
     TUBES_PAIRS = 3
-
-
 
     def __init__(self):
         self.background = None
@@ -137,6 +141,8 @@ class FlappyGame:
         self.is_executing = False
         self.next_tubes = 0
         self.font = None
+        self.state = GameStates.START
+        self.ground = None
 
     def init_engine(self):
         pygame.init()
@@ -147,8 +153,13 @@ class FlappyGame:
         self.player = FlappySprite(self)
         self.clock = pygame.time.Clock()
         self.is_executing = True
-        self.font = pygame.font.Font('assets/ARCADECLASSIC.TTF', 30 )
+        self.font = pygame.font.Font('assets/ARCADECLASSIC.TTF', 30)
         self.init_tubes()
+
+        # Un sprite invisible para el suelo
+        self.ground = pygame.sprite.Sprite()
+        self.ground.image = pygame.Surface((self.WIDTH, 10))
+        self.ground.rect = self.ground.image.get_rect(topleft=(0, self.HEIGHT))
 
     def init_tubes(self):
         for i in range(self.TUBES_PAIRS):
@@ -164,9 +175,15 @@ class FlappyGame:
             keys = self.get_keys()
             for events in pygame.event.get():
                 self.handle_event(events, keys)
-            self.update_state(time, keys)
-            self.check_collision()
-            self.draw_screen()
+
+            if self.state == GameStates.PLAYING:
+                self.update_state(time, keys)
+                self.check_collision()
+                self.draw_screen()
+            elif self.state == GameStates.START:
+                self.draw_start_screen()
+            elif self.state == GameStates.RESET:
+                self.draw_reset_screen()
             pygame.display.flip()
 
         pygame.display.quit()
@@ -192,34 +209,68 @@ class FlappyGame:
         for tubes in self.tubes_pairs:
             tubes.get_group().draw(self.screen)
         self.draw_score()
+        self.place_ground()
 
     def draw_score(self):
         s = self.font.render('Score  {}'.format(self.score), True, (255, 255, 255))
         self.screen.blit(s, (10, 10))
 
     def check_collision(self):
-        for tubes in self.tubes_pairs:
-            if pygame.sprite.spritecollideany(self.player, tubes.group, collided=pygame.sprite.collide_mask):
-                print("Se detectó colisión")
-                self.game_over()
+        if (pygame.sprite.spritecollideany(self.player,
+                                           self.tubes_pairs[self.next_tubes].group,
+                                           collided=pygame.sprite.collide_mask) or
+                pygame.sprite.collide_rect(self.player, self.ground)):
+            self.game_over()
 
     def reset(self):
         self.player.reset()
         self.score = 0
+        self.next_tubes = 0
+        self.tubes_pairs.clear()
+        self.init_tubes()
+        self.state = GameStates.PLAYING
 
     def game_over(self):
-        self.is_executing = False
-        print("Juego terminado")
+        self.state = GameStates.RESET
 
     def handle_event(self, events, keys):
         if events.type == QUIT:
             self.is_executing = False
-        if keys[K_ESCAPE]:
-            self.reset()
+        if keys[K_SPACE]:
+            if self.state == GameStates.RESET:
+                self.reset()
+            elif self.state == GameStates.START:
+                self.state = GameStates.PLAYING
+            elif self.state == GameStates.RESET:
+                self.reset()
 
     @staticmethod
     def get_keys():
         return pygame.key.get_pressed()
+
+    def get_distances(self):
+        """
+        Retorna las siguientes distancias desde el player el centro del player:
+
+        1. Distancia al suelo
+        2. Distancia al borde superior derecho del tubo que viene por abajo
+        3. Distancia al borde inferior derecho del tube que viene por arriba
+        """
+        return (self.HEIGHT - self.player.rect.centery,
+                distance(self.player.rect.center, self.tubes_pairs[self.next_tubes].tube_up.rect.topright),
+                distance(self.player.rect.center, self.tubes_pairs[self.next_tubes].tube_down.rect.bottomright))
+
+    def draw_start_screen(self):
+        s = self.font.render("Presiona  ESPACIO  para  iniciar  el  juego", True, (255, 255, 255))
+        self.screen.blit(s, s.get_rect(center=(self.WIDTH / 2, self.HEIGHT / 2)))
+
+    def draw_reset_screen(self):
+        s = self.font.render("Juego  terminado  tu  puntaje  fue  {}".format(self.score), True, (0, 0, 0))
+        self.screen.blit(s, s.get_rect(center=(self.WIDTH / 2, self.HEIGHT / 2)))
+
+
+    def place_ground(self):
+        self.screen.blit(self.ground.image, self.ground.rect)
 
 
 if __name__ == '__main__':
