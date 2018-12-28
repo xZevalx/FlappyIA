@@ -2,3 +2,5 @@
 .ipynb*
 idea
 unused_classes
+ia/__pycache__
+game/__pycache__

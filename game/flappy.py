@@ -26,7 +26,7 @@ class FlappySprite(pygame.sprite.Sprite):
     def __init__(self, game):
         pygame.sprite.Sprite.__init__(self)
         self.game = game  # A reference to the container game
-        self.image = load_image("assets/flappy.png")
+        self.image = load_image("game/assets/flappy.png")
         self.rect = self.image.get_rect()
         self.rect.centerx = self.game.WIDTH / 3
         self.rect.centery = int(self.game.HEIGHT * (1 / 3))
@@ -61,9 +61,9 @@ class TubeSprite(pygame.sprite.Sprite):
     def __init__(self, type):
         pygame.sprite.Sprite.__init__(self)
         if type == TubeSprite.UP:
-            self.image = load_image('assets/tube_up.png')
+            self.image = load_image('game/assets/tube_up.png')
         elif type == TubeSprite.DOWN:
-            self.image = load_image('assets/tube_down.png')
+            self.image = load_image('game/assets/tube_down.png')
         self.rect = self.image.get_rect()
         self.speed = 0.2
         self.moving = True
@@ -149,11 +149,11 @@ class FlappyGame:
         pygame.font.init()
         self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT), HWSURFACE | DOUBLEBUF | RESIZABLE)
         pygame.display.set_caption("Flappy IA")
-        self.background = load_image('assets/background.png')
+        self.background = load_image('game/assets/background.png')
         self.player = FlappySprite(self)
         self.clock = pygame.time.Clock()
         self.is_executing = True
-        self.font = pygame.font.Font('assets/ARCADECLASSIC.TTF', 30)
+        self.font = pygame.font.Font('game/assets/ARCADECLASSIC.TTF', 30)
         self.init_tubes()
 
         # Un sprite invisible para el suelo
@@ -178,8 +178,8 @@ class FlappyGame:
 
             if self.state == GameStates.PLAYING:
                 self.update_state(time, keys)
-                self.check_collision()
-                self.draw_screen()
+                self.check_player_collision()
+                self.draw_playing_screen()
             elif self.state == GameStates.START:
                 self.draw_start_screen()
             elif self.state == GameStates.RESET:
@@ -203,7 +203,7 @@ class FlappyGame:
             # Se actualiza el next
             self.next_tubes = int((self.next_tubes + 1) % self.TUBES_PAIRS)
 
-    def draw_screen(self):
+    def draw_playing_screen(self):
         self.screen.blit(pygame.transform.scale(self.background, (self.WIDTH, self.HEIGHT)), (0, 0))
         self.screen.blit(self.player.image, self.player.rect)
         for tubes in self.tubes_pairs:
@@ -215,7 +215,7 @@ class FlappyGame:
         s = self.font.render('Score  {}'.format(self.score), True, (255, 255, 255))
         self.screen.blit(s, (10, 10))
 
-    def check_collision(self):
+    def check_player_collision(self):
         if (pygame.sprite.spritecollideany(self.player,
                                            self.tubes_pairs[self.next_tubes].group,
                                            collided=pygame.sprite.collide_mask) or
@@ -268,11 +268,5 @@ class FlappyGame:
         s = self.font.render("Juego  terminado  tu  puntaje  fue  {}".format(self.score), True, (0, 0, 0))
         self.screen.blit(s, s.get_rect(center=(self.WIDTH / 2, self.HEIGHT / 2)))
 
-
     def place_ground(self):
         self.screen.blit(self.ground.image, self.ground.rect)
-
-
-if __name__ == '__main__':
-    game = FlappyGame()
-    game.execute()
