@@ -13,14 +13,15 @@ class IOrganism:
     - breed(organism)
     """
 
-    def __init__(self, representation=None, size=0):
+    def __init__(self, representation=None, size=0, auto_generate_repr=True):
         """
         Organism constructor.
 
+        :param auto_generate_repr:
         :param representation: List with elements that represent its genome.
         If None applies 'spontaneous generation'
         """
-        if representation is None:
+        if representation is None and auto_generate_repr:
             self.spontaneous_generation(size)
         else:
             self.representation = representation if not isinstance(representation, np.ndarray) else np.array(
@@ -34,7 +35,8 @@ class IOrganism:
     def spontaneous_generation(self, size):
         """
         Creates an organism's representation from nothing with 'size' genes.
-        Should assign the member self.representation
+        Should assign the member self.representation.
+        This function is call when none representation is passed to the constructor
         """
         pass
 
@@ -62,7 +64,6 @@ class GeneticAlg:
     def __init__(self,
                  pop_size,
                  organism_type,
-                 organism_size,
                  fitness_function,
                  selection_function,
                  mutation_rate=.1,
@@ -71,16 +72,15 @@ class GeneticAlg:
 
         :param pop_size: Size of the population
         :param organism_type: A subclass of IOrganism
-        :param organism_size: Length of organism representation
         :param fitness_function: function that takes only the organism to calculate its fitness
         :param selection_function: function that selects the population to give breed.
-                                   Signature sf(organism, fitnesses, return_best)
+                                   Signature sf(organisms, fitnesses, return_best)
         :param organism_kwargs: Extra keyword arguments for organism_type. Implementation dependant
         :param mutation_rate: float
         """
         self.population_size = pop_size
         # Init population
-        self.population = np.array([organism_type(size=organism_size, **organism_kwargs) for _ in range(pop_size)])
+        self.population = np.array([organism_type(**organism_kwargs) for _ in range(pop_size)])
         self.fitness_function = fitness_function
         self.mut_rate = mutation_rate
         self.selection_function = selection_function
@@ -123,18 +123,12 @@ class GeneticAlg:
         organism_evolution = []
         for i in range(generations):
             print('Evaluating generation {}'.format(i + 1))
-            # Evaluate population fitness
-            self.fitness = self.calc_fitness()
-            # Select population to give breed
-            elite_organisms, best_organism = self.selection_function(self.population, self.fitness, True)
+
+            best_organism = self.breed_new_generation()
+
             if trace_evolution:
                 organism_evolution.append(best_organism)
                 fitness_evolution.append(best_organism.fitness)
-
-            # Create new offsprings
-            offsprings = self.offspring_generation(elite_organisms, self.population_size - len(elite_organisms))
-            # Update population
-            self.population = np.concatenate((elite_organisms, offsprings))
 
         print('Evolution process finished with {} generations'.format(i + 1))
 
@@ -142,3 +136,19 @@ class GeneticAlg:
             return i, organism_evolution, fitness_evolution
         else:
             return i
+
+    def breed_new_generation(self):
+        """ Creates a new generation """
+        # Evaluate population fitness
+        self.fitness = self.calc_fitness()
+
+        # Select population to give breed
+        elite_organisms, best_organism = self.selection_function(self.population, self.fitness, True)
+
+        # Create new offsprings
+        offsprings = self.offspring_generation(elite_organisms, self.population_size - len(elite_organisms))
+
+        # Update population
+        self.population = np.concatenate((elite_organisms, offsprings))
+
+        return best_organism

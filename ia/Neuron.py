@@ -2,12 +2,11 @@ import numpy as np
 
 
 def random_weights(n):
-    return (np.random.rand(n) - 0.5) * 10
+    return (np.random.rand(n) - 0.5) * 300
 
 
 def random_bias():
-    return (np.random.random() - 0.5) * 10
-
+    return (np.random.random() - 0.5) * 300
 
 class Neuron:
 
@@ -32,6 +31,10 @@ class Neuron:
         self.delta = 0
         self._last_inputs = None
         self.output = None
+
+    def randomize(self):
+        self.weights = random_weights(len(self.weights))
+        self.bias = random_bias()
 
     def guess(self, x):
         """

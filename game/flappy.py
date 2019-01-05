@@ -143,6 +143,7 @@ class FlappyGame:
         self.font = None
         self.state = GameStates.START
         self.ground = None
+        self.last_process_msg = None
 
     def init_engine(self):
         pygame.init()
@@ -167,14 +168,24 @@ class FlappyGame:
             # Se separan los tubos horizontalmente
             self.tubes_pairs[-1].set_xpos(int(self.WIDTH + self.TUBES_DISTANCE * i))
 
-    def execute(self):
+    def execute(self, state_queue=None, actions_queue=None):
         self.init_engine()
 
         while self.is_executing:
             time = self.clock.tick(60)
-            keys = self.get_keys()
+            # Obtiene el input desde la cola de acciones o desde el teclado
+            if actions_queue is not None:
+                try:
+                    keys = actions_queue.get(block=False)
+                except Exception as e:
+                    keys = self.get_keys()
+            else:
+                keys = self.get_keys()
             for events in pygame.event.get():
                 self.handle_event(events, keys)
+
+            if state_queue is not None:
+                self.log_into_queue(state_queue)
 
             if self.state == GameStates.PLAYING:
                 self.update_state(time, keys)
@@ -236,13 +247,11 @@ class FlappyGame:
     def handle_event(self, events, keys):
         if events.type == QUIT:
             self.is_executing = False
-        if keys[K_SPACE]:
+        if keys[K_RETURN]:
             if self.state == GameStates.RESET:
                 self.reset()
             elif self.state == GameStates.START:
                 self.state = GameStates.PLAYING
-            elif self.state == GameStates.RESET:
-                self.reset()
 
     @staticmethod
     def get_keys():
@@ -261,7 +270,7 @@ class FlappyGame:
                 distance(self.player.rect.center, self.tubes_pairs[self.next_tubes].tube_down.rect.bottomright))
 
     def draw_start_screen(self):
-        s = self.font.render("Presiona  ESPACIO  para  iniciar  el  juego", True, (255, 255, 255))
+        s = self.font.render("Presiona  INTRO  para  iniciar  el  juego", True, (255, 255, 255))
         self.screen.blit(s, s.get_rect(center=(self.WIDTH / 2, self.HEIGHT / 2)))
 
     def draw_reset_screen(self):
@@ -270,3 +279,26 @@ class FlappyGame:
 
     def place_ground(self):
         self.screen.blit(self.ground.image, self.ground.rect)
+
+    def log_into_queue(self, queue):
+
+        if self.state == GameStates.PLAYING:
+            self.last_process_msg = (self.state, self.get_distances())
+            queue.put(self.last_process_msg)
+        elif self.state == GameStates.START:
+            self.last_process_msg = (self.state, None)
+            queue.put(self.last_process_msg)
+        elif self.state == GameStates.RESET:
+            if self.last_process_msg[0] == GameStates.PLAYING:
+                distances = self.get_distances()
+                distance_to_tubes_score = 1 - ((distances[1] + distances[2])/2)/self.HEIGHT
+                self.last_process_msg = (self.state, self.score + distance_to_tubes_score)
+                queue.put(self.last_process_msg)
+
+
+
+
+
+if __name__ == '__main__':
+    game = FlappyGame()
+    game.execute()

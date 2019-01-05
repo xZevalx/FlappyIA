@@ -49,6 +49,9 @@ class NeuronLayer:
         for neuron in self.neurons:
             neuron.adjust_neuron_params()
 
+    def __len__(self):
+        return self.get_number_of_neurons
+
     @property
     def get_number_of_neurons(self):
         return len(self.neurons)

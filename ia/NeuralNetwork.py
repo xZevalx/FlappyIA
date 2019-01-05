@@ -65,3 +65,12 @@ class NeuralNetwork:
                 epoch_error += self.train(training_input, expected_value)
             errors.append(epoch_error/len(dataset))
         return errors
+
+    def get_layers(self):
+        """ Returns all layers except InputLayer """
+        return self.layers[1:]
+
+    def set_layers(self, layers):
+        """ Set self.layers from layers, excluding InputLayer """
+        self.layers[1:] = layers
+        self.output_layer = self.layers[-1]
